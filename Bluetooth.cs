@@ -59,13 +59,6 @@ namespace Bluetooth
             this.manager.ConnectPeripheral(peripheral);
         }
 
-        // This method gets the devices connected to the central manager
-        public CBPeripheral[] GetConnectedDevices()
-        {
-            CBUUID cbuuids = null;
-            return this.manager.RetrieveConnectedPeripherals(new[] { cbuuids });
-        }
-
         // This method gets the services of connected device
         public void GetService(CBPeripheral peripheral)
         {
@@ -115,7 +108,6 @@ namespace Bluetooth
 
     public class PeripheralDelegate : CBPeripheralDelegate
     {
-
         public override void DiscoveredService(CBPeripheral peripheral, NSError error)
         {
             foreach (var service in peripheral.Services)
@@ -127,10 +119,6 @@ namespace Bluetooth
 
         public override void DiscoveredCharacteristic(CBPeripheral peripheral, CBService service, NSError error)
         {
-
-            //0x2804ca780
-            //6755BD3B-BC83-AB98-3BB9-2C989CA9E895
-
             foreach (var characteristic in service.Characteristics)
             {
                 Console.WriteLine($"Discovered characteristic: {characteristic}");
