@@ -120,10 +120,8 @@ namespace Bluetooth
         {
             foreach (var service in peripheral.Services)
             {
-                //if (service.UUID == CBUUID.FromString("22BB746F-2BA0-7554-2D6F-726568705327"))
-                //{
+                    Console.WriteLine($"Discovered service: {service}");
                     peripheral.DiscoverCharacteristics(service);
-                //}
             }
         }
 
@@ -135,43 +133,8 @@ namespace Bluetooth
 
             foreach (var characteristic in service.Characteristics)
             {
-                //if (characteristic.UUID == CBUUID.FromString("22BB746F-2BA1-7554-2D6F-726568705327"))
-                //{
-                    Console.WriteLine($"Characteristics of {service}:");
-                    Console.WriteLine(characteristic);
-                    Console.WriteLine("Attempting to write data.");
-
-                    if (characteristic.UUID == CBUUID.FromString("22BB746F-2BA6-7554-2D6F-726568705327"))
-                    {
-                        peripheral.SetNotifyValue(true, characteristic);
-                    }
-
-                /*
-                 * var LEDCommand = new FLEDCommand(255, 0, 0, false, 0x37);
-                 * var command = NSData.FromArray(LEDCommand.CreateCommandPacket());
-                 */
-
-                var pingCommand = new PingCommand();
-                    var command = NSData.FromArray(pingCommand.CreateCommand());                    
-
-                    Console.WriteLine("-------------------------");
-                    Console.WriteLine(command);
-                    Console.WriteLine("Bytes:  " + command.Bytes);
-                    Console.WriteLine("Length: " + command.Length);
-                    Console.WriteLine("Characteristic Properties: " + characteristic.Properties);
-                    Console.WriteLine("-------------------------");
-
-                    Console.WriteLine("Sending the Command");
-                    peripheral.WriteValue(command, characteristic, CBCharacteristicWriteType.WithResponse);
-
-                //}
+                Console.WriteLine($"Discovered characteristic: {characteristic}");
             }
-        }
-
-        public override void WroteCharacteristicValue(CBPeripheral peripheral, CBCharacteristic characteristic, NSError error)
-        {
-            Console.WriteLine("Characteristic Value written.");
-            Console.WriteLine("Error: " + error);
         }
     }
 }
