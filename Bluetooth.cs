@@ -59,12 +59,102 @@ namespace Bluetooth
             this.manager.ConnectPeripheral(peripheral);
         }
 
+        // This method gets the devices connected to the central manager
+        public CBPeripheral[] GetConnectedDevices()
+        {
+            CBUUID cbuuids = null;
+            return this.manager.RetrieveConnectedPeripherals(new[] { cbuuids });
+        }
+
         // This method gets the services of connected device
-        public void GetService(CBPeripheral peripheral)
+        public async Task GetServices(CBPeripheral peripheral)
         {
             peripheral.Delegate = new PeripheralDelegate();
 
             peripheral.DiscoverServices();
+            await Task.Delay(2000);
+        }
+
+        public void WakeUp(CBPeripheral peripheral)
+        {
+            // Method that sends commands to sphero in specific order to wake it up
+
+            // Create required data
+            NSData antiDOS = NSData.FromString("011i3");
+            var txdata = new byte[1];
+            txdata[0] = 0x07;
+            NSData TXdata = NSData.FromArray(txdata);
+            var wakeupdata = new byte[1];
+            wakeupdata[0] = 0x01;
+            NSData WakeupData = NSData.FromArray(wakeupdata);
+
+            // Notes
+            // peripheral.Services[0].Characteristics is Control/Response Characteristics
+            // Control first, then Response
+            // peripheral.Services[1].Characteristics is Radio Service Characteristics
+            // peripheral.Services[2].Characteristics is Device Info Characteristics
+            // peripheral.Services[3].Characteristics is Device Information
+
+            // Sending the wake up commands to the sphero
+            // Can be simplified (either if discovery of services and characteristics are static, or by sorting the arrays
+            // that information is contained in. For now this is just a working version.
+
+
+            foreach (var characteristic in peripheral.Services[1].Characteristics)
+            {
+                if (characteristic.UUID == CBUUID.FromString("22bb746f-2bbd-7554-2D6F-726568705327"))
+                {
+                    Console.WriteLine("Writing to Anti DOS");
+                    peripheral.WriteValue(antiDOS, characteristic, CBCharacteristicWriteType.WithResponse);
+                }
+            }
+            foreach (var characteristic in peripheral.Services[1].Characteristics)
+            {
+                if (characteristic.UUID == CBUUID.FromString("22bb746f-2bb2-7554-2D6F-726568705327"))
+                {
+                    Console.WriteLine("Writing to TX Power");
+                    peripheral.WriteValue(TXdata, characteristic, CBCharacteristicWriteType.WithResponse);
+                }
+            }
+            foreach (var characteristic in peripheral.Services[1].Characteristics)
+            {
+                if (characteristic.UUID == CBUUID.FromString("22bb746f-2bbf-7554-2D6F-726568705327"))
+                {
+                    Console.WriteLine("Writing to Wakeup");
+                    peripheral.WriteValue(WakeupData, characteristic, CBCharacteristicWriteType.WithResponse);
+                }
+            }
+
+
+            /*
+            peripheral.WriteValue(antiDOS, peripheral.Services[1].Characteristics[3], CBCharacteristicWriteType.WithResponse);
+            peripheral.WriteValue(TXdata, peripheral.Services[1].Characteristics[0], CBCharacteristicWriteType.WithResponse);
+            peripheral.WriteValue(WakeupData, peripheral.Services[1].Characteristics[5], CBCharacteristicWriteType.WithResponse);
+            */           
+        }
+
+        public void Sleep(CBPeripheral peripheral)
+        {
+            Console.WriteLine("Sleep method entered");
+            var data = NSData.FromString("011i3");
+
+            Console.WriteLine("Created data variable");
+            foreach (var characteristic in peripheral.Services[1].Characteristics)
+            {
+                Console.WriteLine("Checking characteristic");
+                if (characteristic.UUID == CBUUID.FromString("22BB746F-2bb7-7554-2D6F-726568705327"))
+                {
+                    Console.WriteLine("Writing to Deep Sleep");
+                    peripheral.WriteValue(data, characteristic, CBCharacteristicWriteType.WithResponse);
+                }
+            }
+        }
+
+        public void SendCommand(CBPeripheral peripheral, BaseSpheroCommand command)
+        {
+            // Send the given command to the sphero
+            NSData dataCommand = NSData.FromArray(command.GetBytes());
+            peripheral.WriteValue(dataCommand, peripheral.Services[0].Characteristics[0], CBCharacteristicWriteType.WithoutResponse);
         }
 
         // This method is run everytime a peripheral is discovered
@@ -106,22 +196,34 @@ namespace Bluetooth
         public CBCentralManagerState State { get; set; }
     }
 
+    // Control the events of the sphero that get called
     public class PeripheralDelegate : CBPeripheralDelegate
     {
+
         public override void DiscoveredService(CBPeripheral peripheral, NSError error)
         {
+            // Discover all the characteristics of the services contained in peripheral.Services
             foreach (var service in peripheral.Services)
             {
-                    Console.WriteLine($"Discovered service: {service}");
-                    peripheral.DiscoverCharacteristics(service);
+                peripheral.DiscoverCharacteristics(service);
             }
         }
 
         public override void DiscoveredCharacteristic(CBPeripheral peripheral, CBService service, NSError error)
         {
+            // Discover the Descriptors of the characteristics contained in service.Characteristics
             foreach (var characteristic in service.Characteristics)
             {
-                Console.WriteLine($"Discovered characteristic: {characteristic}");
+                peripheral.DiscoverDescriptors(characteristic);
+            }
+        }
+
+        public override void WroteCharacteristicValue(CBPeripheral peripheral, CBCharacteristic characteristic, NSError error)
+        {
+            // Method used to test successful data sends.
+            if (error != null)
+            {
+                Console.WriteLine($"Error: {error}");
             }
         }
     }
